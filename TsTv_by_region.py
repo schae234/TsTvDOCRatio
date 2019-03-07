@@ -1,5 +1,5 @@
 import sys
-
+import argparse
 import numpy as np
 
 
@@ -31,17 +31,20 @@ def calculate_tstv():
             BinEnd_T.append(int(binstart)+100000)
 
 
-def calculate_mean_doc(doc_file, output_file=None):
+def calculate_mean_doc(doc_file, output_file=None, window_size=1000000):
     '''
-        Reads in the DOC file one line at a time, the window is calcualted by dividing by the window size and
-        converting to an integer. Once all of the values for a window have been read in, the mean DOC is 
-        calculated for all the bases in the window.
+    Reads in the DOC file one line at a time, the window is calcualted by
+    dividing by the window size and converting to an integer. Once all of the
+    values for a window have been read in, the mean DOC is calculated for all the
+    bases in the window.
 
-        Prints the average DOC to `output_file`. If not specified, the default output file
-        is stdout. This lets you pipe the output
+    Prints the average DOC to `output_file`. If not specified, the default
+    output file is stdout. This lets you pipe the output
     '''
     if output_file is None:
         output_file = sys.stdout
+    else:
+        output_file = open(output_file,'w')
     # Process the doc file 
     with open(doc_file, "r") as input_file:
         print("Processing {}".format(doc_file),file=sys.stderr)
@@ -53,8 +56,9 @@ def calculate_mean_doc(doc_file, output_file=None):
         cur_min = None
         cur_max = None
         docs = []
-        # print a header for 
-        print('chrom\twindow\tstart\tstop\tmean_doc', file=output_file) 
+        # print a header for the output file
+        print('#{}'.format(doc_file),file=output_file) 
+        print('#chrom\twindow\tstart\tstop\tmean_doc', file=output_file) 
         # Iterate over the file
         for i,line in enumerate(input_file):
             # split out the values in the line
@@ -62,7 +66,7 @@ def calculate_mean_doc(doc_file, output_file=None):
             chrom,pos = a.split(":")
             # Convert to appropriate types
             pos = int(pos)
-            window = int(pos/1000000)
+            window = int(pos/window_size)
             depth = float(depth)
             if cur_chrom is None:
                 cur_chrom = chrom
@@ -86,3 +90,19 @@ def calculate_mean_doc(doc_file, output_file=None):
             cur_min = min(pos,cur_min)
             cur_max = max(pos,cur_max)
 
+if __name__ == '__main__':
+    '''
+        If the script is run from the command line, 
+    '''
+    try:
+        parser = argparse.ArgumentParser(description='Calculate mean DOC from a gatk DOC file.')
+        parser.add_argument('--input',  help='the path to the input file (from GATK)')
+        parser.add_argument('--output', default=None, help='the path to the output file (if none, will be printed to STDOUT)')
+        args = parser.parse_args()
+        calculate_mean_doc(args.input, output_file=args.output)
+    except Exception as e:
+        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        print("A bad thing happened: {}".format(e))
+        print('Please see the command usage below:\n\n\n')
+        print(parser.print_help())
+    
