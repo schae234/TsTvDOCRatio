@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 import pandas as pd
 
@@ -38,36 +40,51 @@ def calculate_mean_doc(doc_file):
     mean_docs = defaultdict(dict)
     # Process the doc file 
     with open(doc_file, "r") as input_file:
+        print("Processing {}".format(doc_file),file=sys.stderr)
         # read in the header line
         header = input_file.readline()
         # Set default values for loop variables
         cur_chrom = None
         cur_window = None
+        cur_min = None
+        cur_max = None
         docs = []
+        # print a header for 
+        print('chrom\twindow\tstart\tstop\tmean_doc') 
         # Iterate over the file
         for i,line in enumerate(input_file):
             # split out the values in the line
-            a,depth = line.strip().split("\t")
+            a,depth,*_ = line.strip().split("\t")
             chrom,pos = a.split(":")
             # Convert to appropriate types
             pos = int(pos)
             window = int(pos/1000000)
             depth = float(depth)
-    
+            if cur_chrom is None:
+                cur_chrom = chrom
+                cur_window = window
+                cur_min = pos
+                cur_max = pos
             # If we are at a new window, process the mean of the old window
             if window != cur_window or chrom != cur_chrom:
-                print('Calculating mean DOC for window {}:{}'.format(cur_chrom,cur_window))
+                print('Calculating mean DOC for window {}:{}'.format(cur_chrom,cur_window),file=sys.stderr)
                 # calculate mean for old window and store in the mean_docs dictionary
-                mean_docs[chrom][window] = numpy.mean(docs) 
+                #mean_docs[chrom][window] = np.mean(docs) 
+                print("{}\t{}\t{}\t{}\t{}".format(cur_chrom,cur_window,cur_min,cur_max,np.mean(docs)))
                 # set up new variables 
                 cur_chrom = chrom
                 cur_window = window
+                cur_min = pos
+                cur_max = pos
                 docs = []
             # always append the doc 
             docs.append(depth)
+            cur_min = min(pos,cur_min)
+            cur_max = max(pos,cur_max)
     # Create a table of the results
     doc_df = pd.DataFrame(mean_docs)
     return doc_df
 
 # Process some files
 dz_cases_DOC = calculate_mean_doc("/home/mccuem/shared/Projects/HorseGenomeProject/Data/EquCab3/dz_cases/GB_pipeline/DOC/dz_cases_DOC")
+dz_cases_DOC.to_csv("~/dz_cases_DOC.csv")
